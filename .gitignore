@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+#to ignore if real passwords are there in ADO.NET
+appsettings.Development.json
