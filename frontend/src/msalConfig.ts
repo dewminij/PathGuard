@@ -8,4 +8,12 @@ export const msalConfig = {
   },
 };
 
+export const loginRequest = {
+  scopes: ["User.Read"],
+};
+
+export const apiRequest = {
+  scopes: ["api://b3724832-3918-47ba-89e7-e5a79072f43a/access_as_user"],
+};
+
 export const msalInstance = new PublicClientApplication(msalConfig);

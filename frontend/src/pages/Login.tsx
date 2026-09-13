@@ -1,12 +1,11 @@
 import { useMsal } from "@azure/msal-react";
+import { loginRequest } from "../msalConfig";
 
 function Login() {
   const { instance } = useMsal();
 
   const handleLogin = () => {
-    instance.loginRedirect({
-      scopes: ["User.Read"],
-    });
+    instance.loginRedirect(loginRequest);
   };
 
   return (

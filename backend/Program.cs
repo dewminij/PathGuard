@@ -23,6 +23,18 @@ builder.Services.AddAuthorization();
 // Add controllers
 builder.Services.AddControllers();
 
+// Allow the React frontend to call the backend API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PathGuardFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -36,6 +48,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("PathGuardFrontend");
 
 // Authentication MUST come before Authorization
 app.UseAuthentication();
