@@ -56,33 +56,7 @@ function Sidebar() {
         </div>
       </nav>
 
-      {/* User Profile */}
-      <div className="border-t border-slate-200 p-4">
-        <NavLink
-          to="/profile"
-          className={({ isActive }) =>
-            `flex w-full items-center gap-3 rounded-xl p-3 transition ${
-              isActive
-                ? "bg-blue-50"
-                : "hover:bg-slate-50"
-            }`
-          }
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-600">
-            TD
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-800">
-              User Profile
-            </p>
-
-            <p className="truncate text-xs text-slate-400">
-              Security Analyst
-            </p>
-          </div>
-        </NavLink>
-      </div>
+      {/* User Profile section intentionally removed for now */}
     </aside>
   );
 }

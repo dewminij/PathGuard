@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import TopNavigation from "./TopNavigation";
 
 function DashboardLayout() {
   return (
@@ -9,18 +10,8 @@ function DashboardLayout() {
 
       {/* Main Content */}
       <main className="min-w-0 flex-1">
-        {/* Top Bar */}
-        <div className="flex h-20 items-center border-b border-slate-200 bg-white px-6">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Security Operations Center
-            </h2>
-
-            <p className="text-sm text-slate-400">
-              PathGuard Security Monitoring
-            </p>
-          </div>
-        </div>
+        {/* Top Navigation */}
+        <TopNavigation />
 
         {/* Current Route/Page */}
         <Outlet />
