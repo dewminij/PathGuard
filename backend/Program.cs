@@ -1,4 +1,5 @@
 using backend.Data;
+using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
@@ -17,10 +18,36 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-// Add authorization
-builder.Services.AddAuthorization();
+// Add authorization using entra group objects ID's for the PathGuard application and helps to achiev RBAC
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("PathGuardReader", policy =>
+        policy.RequireClaim(
+            "groups",
+            "1329a6d9-d443-47a1-805e-fdee32b0635c"
+        ));
+
+    options.AddPolicy("PathGuardOperator", policy =>
+        policy.RequireClaim(
+            "groups",
+            "6c72bcdc-6c75-4e4c-8754-e801f725e4e4"
+        ));
+
+    options.AddPolicy("PathGuardAdministrator", policy =>
+        policy.RequireClaim(
+            "groups",
+            "5a47cafe-ae1e-4001-9f6e-a7609f36c94e"
+        ));
+
+    options.AddPolicy("PathGuardGlobalAdministrator", policy =>
+        policy.RequireClaim(
+            "groups",
+            "8a987d35-6034-497d-bb14-ae51df48326b"
+        ));
+});
 
 // Add controllers
+builder.Services.AddScoped<AlertService>();
 builder.Services.AddControllers();
 
 // Allow the React frontend to call the backend API
@@ -29,7 +56,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("PathGuardFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins("http://localhost:5500")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

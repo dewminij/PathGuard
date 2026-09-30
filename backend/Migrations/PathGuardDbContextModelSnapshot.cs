@@ -251,6 +251,62 @@ namespace backend.Migrations
                     b.ToTable("Incidents");
                 });
 
+            modelBuilder.Entity("backend.Models.NormalizedAlert", b =>
+                {
+                    b.Property<int>("NormalizedAlertId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NormalizedAlertId"));
+
+                    b.Property<int>("AlertId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DestinationIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Hostname")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("IncidentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MITRETechnique")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SourceIP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("NormalizedAlertId");
+
+                    b.HasIndex("AlertId");
+
+                    b.HasIndex("IncidentId");
+
+                    b.HasIndex("Severity");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("NormalizedAlerts");
+                });
+
             modelBuilder.Entity("backend.Models.Report", b =>
                 {
                     b.Property<int>("ReportId")
@@ -476,6 +532,24 @@ namespace backend.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("AssignedToUser");
+                });
+
+            modelBuilder.Entity("backend.Models.NormalizedAlert", b =>
+                {
+                    b.HasOne("backend.Models.Alert", "Alert")
+                        .WithMany()
+                        .HasForeignKey("AlertId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Models.Incident", "Incident")
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Alert");
+
+                    b.Navigation("Incident");
                 });
 
             modelBuilder.Entity("backend.Models.Report", b =>

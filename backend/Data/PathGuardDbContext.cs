@@ -15,12 +15,12 @@ public class PathGuardDbContext : DbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<Asset> Assets { get; set; }
     public DbSet<Alert> Alerts { get; set; }
+    public DbSet<NormalizedAlert> NormalizedAlerts { get; set; }
     public DbSet<Incident> Incidents { get; set; }
     public DbSet<AttackPath> AttackPaths { get; set; }
     public DbSet<RiskScore> RiskScores { get; set; }
     public DbSet<Report> Reports { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -29,25 +29,28 @@ public class PathGuardDbContext : DbContext
         // Seed default roles
         // =========================
         modelBuilder.Entity<Role>().HasData(
-            new Role
-            {
-                RoleId = 1,
-                RoleName = "Administrator",
-                Description = "Full access to the PathGuard platform."
-            },
-            new Role
-            {
-                RoleId = 2,
-                RoleName = "Security Analyst",
-                Description = "Can monitor alerts, investigate incidents, and manage security operations."
-            },
-            new Role
-            {
-                RoleId = 3,
-                RoleName = "Viewer",
-                Description = "Read-only access to PathGuard security information."
-            }
-        );
+    new Role
+    {
+        RoleId = 1,
+        RoleName = "Administrator",
+        Description = "Full access to the PathGuard platform.",
+        CreatedAt = new DateTime(2026, 9, 6, 10, 13, 51, 976, DateTimeKind.Utc).AddTicks(915)
+    },
+    new Role
+    {
+        RoleId = 2,
+        RoleName = "Security Analyst",
+        Description = "Can monitor alerts, investigate incidents, and manage security operations.",
+        CreatedAt = new DateTime(2026, 9, 6, 10, 13, 51, 976, DateTimeKind.Utc).AddTicks(921)
+    },
+    new Role
+    {
+        RoleId = 3,
+        RoleName = "Viewer",
+        Description = "Read-only access to PathGuard security information.",
+        CreatedAt = new DateTime(2026, 9, 6, 10, 13, 51, 976, DateTimeKind.Utc).AddTicks(922)
+    }
+);
 
         // =========================
         // Role → Users
@@ -65,6 +68,24 @@ public class PathGuardDbContext : DbContext
             .HasOne(a => a.Asset)
             .WithMany(asset => asset.Alerts)
             .HasForeignKey(a => a.AssetId)
+            .OnDelete(DeleteBehavior.SetNull);
+        
+        // =========================
+        // Alert → NormalizedAlerts
+        // =========================
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasOne(na => na.Alert)
+            .WithMany()
+            .HasForeignKey(na => na.AlertId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // =========================
+        // NormalizedAlert → Incident
+        // =========================
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasOne(na => na.Incident)
+            .WithMany()
+            .HasForeignKey(na => na.IncidentId)
             .OnDelete(DeleteBehavior.SetNull);
 
         // =========================
@@ -173,5 +194,20 @@ public class PathGuardDbContext : DbContext
 
         modelBuilder.Entity<AuditLog>()
             .HasIndex(a => a.Timestamp);
+
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasIndex(na => na.Timestamp);
+
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasIndex(na => na.Severity);
+
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasIndex(na => na.Status);
+
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasIndex(na => na.AlertId);
+
+        modelBuilder.Entity<NormalizedAlert>()
+            .HasIndex(na => na.IncidentId);
     }
 }
