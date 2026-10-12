@@ -7,6 +7,8 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import { getApiAccessToken } from "./api/authApi";
 import { ThemeProvider } from "./context/ThemeContext";
+//testing purpose only to check normalization works
+import NormalizationTest from "./pages/NormalizationTest";
 
 function App() {
   const isAuthenticated = useIsAuthenticated();
@@ -138,6 +140,12 @@ function App() {
           <Route
             path="/"
             element={<Navigate to="/dashboard" replace />}
+          />
+
+          //testing purpose only to check normalization works
+          <Route
+            path="/normalization-test"
+            element={<NormalizationTest />}
           />
         </Routes>
       </BrowserRouter>
