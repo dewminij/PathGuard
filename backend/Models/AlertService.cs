@@ -14,7 +14,7 @@ public class AlertService
         _context = context;
     }
 
-    public async Task<Alert> CreateAlertAsync(AlertImportDto dto)
+    /*public async Task<Alert> CreateAlertAsync(AlertImportDto dto)
     {
         var alert = new Alert
         {
@@ -34,6 +34,48 @@ public class AlertService
 
         return alert;
     }
+
+    */
+// alert normalization which did on 12/10/2026
+//public async Task<Alert> CreateAlertAsync(AlertImportDto dto)
+public async Task<(Alert Alert, bool WasCreated)> CreateAlertAsync(AlertImportDto dto)
+{
+    if (!string.IsNullOrWhiteSpace(dto.ExternalAlertId))
+    {
+        var externalAlertId = dto.ExternalAlertId.Trim();
+        var source = dto.Source.Trim();
+
+        var existingAlert = await _context.Alerts
+            .FirstOrDefaultAsync(a =>
+                a.ExternalAlertId == externalAlertId &&
+                a.Source == source);
+
+        if (existingAlert != null)
+        {
+            return (existingAlert, false);
+        }
+    }
+
+    var alert = new Alert
+    {
+        ExternalAlertId = string.IsNullOrWhiteSpace(dto.ExternalAlertId)
+            ? null
+            : dto.ExternalAlertId.Trim(),
+        Source = dto.Source.Trim(),
+        EventType = dto.EventType,
+        Title = dto.Title,
+        Description = dto.Description,
+        Severity = dto.Severity,
+        AssetId = dto.AssetId,
+        Timestamp = dto.Timestamp,
+        Status = dto.Status
+    };
+
+    _context.Alerts.Add(alert);
+    await _context.SaveChangesAsync();
+
+    return (alert , true);
+}
 
     public async Task<List<Alert>> GetAlertsAsync()
     {

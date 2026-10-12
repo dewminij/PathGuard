@@ -18,8 +18,10 @@ public class AlertController : ControllerBase
         _alertService = alertService;
     }
 
+    /*
     [HttpPost("upload")]
     public async Task<IActionResult> UploadAlert([FromBody] AlertImportDto dto)
+    
     {
         var alert = await _alertService.CreateAlertAsync(dto);
 
@@ -29,6 +31,26 @@ public class AlertController : ControllerBase
             alert
         );
     }
+    */
+
+    
+[HttpPost("upload")]
+public async Task<IActionResult> UploadAlert([FromBody] AlertImportDto dto)
+{
+    var result = await _alertService.CreateAlertAsync(dto);
+
+    if (!result.WasCreated)
+    {
+        return Ok(result.Alert);
+    }
+
+    return CreatedAtAction(
+        nameof(GetAlertById),
+        new { id = result.Alert.AlertId },
+        result.Alert
+    );
+}
+
 
     [HttpGet]
     public async Task<IActionResult> GetAlerts()

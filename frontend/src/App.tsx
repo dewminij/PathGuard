@@ -28,7 +28,7 @@ function App() {
         );
 
         const response = await fetch(
-          "http://localhost:5501/api/AuthTest",
+          "http://localhost:6001/api/AuthTest",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,

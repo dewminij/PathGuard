@@ -48,6 +48,7 @@ builder.Services.AddAuthorization(options =>
 
 // Add controllers
 builder.Services.AddScoped<AlertService>();
+builder.Services.AddScoped<NormalizationService>();
 builder.Services.AddControllers();
 
 // Allow the React frontend to call the backend API
@@ -56,7 +57,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("PathGuardFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5500")
+            .WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
