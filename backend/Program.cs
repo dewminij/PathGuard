@@ -50,6 +50,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<AlertService>();
 builder.Services.AddScoped<NormalizationService>();
 builder.Services.AddControllers();
+builder.Services.AddScoped<CorrelationService>();
 
 // Allow the React frontend to call the backend API
 builder.Services.AddCors(options =>
