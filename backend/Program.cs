@@ -3,6 +3,7 @@ using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,8 @@ builder.Services.AddScoped<NormalizationService>();
 builder.Services.AddControllers();
 builder.Services.AddScoped<CorrelationService>();
 builder.Services.AddScoped<IncidentService>(); //on 26/11/2026
+builder.Services.AddScoped<MitreMappingService>();
+builder.Services.AddScoped<AttackPathService>();
 
 // Allow the React frontend to call the backend API
 builder.Services.AddCors(options =>
@@ -65,9 +68,36 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add Swagger
+// Add Swagger details for the authorization and add MASL entra configurations too
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your Microsoft Entra ID access token."
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
 
 var app = builder.Build();
 

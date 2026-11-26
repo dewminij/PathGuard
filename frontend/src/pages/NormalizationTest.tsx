@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { getApiAccessToken } from "../api/authApi";

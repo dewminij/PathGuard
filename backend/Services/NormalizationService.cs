@@ -1,14 +1,6 @@
-/* 
-12/10/2026 
-
-for the first version we will jsut map few alerts into MITTRE framework and try out our normalization part
-
-*/
-
 using backend.Data;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace backend.Services;
@@ -16,10 +8,14 @@ namespace backend.Services;
 public class NormalizationService
 {
     private readonly PathGuardDbContext _context;
+    private readonly MitreMappingService _mitreMappingService;
 
-    public NormalizationService(PathGuardDbContext context)
+    public NormalizationService(
+        PathGuardDbContext context,
+        MitreMappingService mitreMappingService)
     {
         _context = context;
+        _mitreMappingService = mitreMappingService;
     }
 
     public async Task<NormalizedAlert?> NormalizeAlertAsync(int alertId)
@@ -54,11 +50,19 @@ public class NormalizationService
             SourceIP = ExtractIp(searchableText, "srcip"),
             DestinationIP = ExtractIp(searchableText, "dstip"),
             Hostname = ExtractHostname(searchableText),
+
             Event = string.IsNullOrWhiteSpace(alert.EventType)
                 ? alert.Title
                 : alert.EventType,
+
             Severity = NormalizeSeverity(alert.Severity),
-            MITRETechnique = MapMitreTechnique(searchableText),
+
+            MITRETechnique = _mitreMappingService.MapTechnique(
+                alert.EventType,
+                alert.Title,
+                alert.Description
+            ),
+
             Status = string.IsNullOrWhiteSpace(alert.Status)
                 ? "New"
                 : alert.Status
@@ -85,27 +89,6 @@ public class NormalizationService
             "low" or "info" or "informational" => "Low",
             _ => "Medium"
         };
-    }
-
-    private static string? MapMitreTechnique(string text)
-    {
-        if (Regex.IsMatch(
-            text,
-            @"brute[\s_-]*force|failed login|multiple failed logins",
-            RegexOptions.IgnoreCase))
-        {
-            return "T1110";
-        }
-
-        if (Regex.IsMatch(
-            text,
-            @"powershell",
-            RegexOptions.IgnoreCase))
-        {
-            return "T1059.001";
-        }
-
-        return null;
     }
 
     private static string? ExtractIp(string text, string fieldName)
