@@ -51,6 +51,7 @@ builder.Services.AddScoped<AlertService>();
 builder.Services.AddScoped<NormalizationService>();
 builder.Services.AddControllers();
 builder.Services.AddScoped<CorrelationService>();
+builder.Services.AddScoped<IncidentService>(); //on 26/11/2026
 
 // Allow the React frontend to call the backend API
 builder.Services.AddCors(options =>

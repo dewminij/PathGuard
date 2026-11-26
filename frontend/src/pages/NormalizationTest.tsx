@@ -1,163 +1,3 @@
-/*
-import { useState } from "react";
-import { useIsAuthenticated, useMsal } from "@azure/msal-react";
-import { getApiAccessToken } from "../api/authApi";
-
-function NormalizationTest() {
-  const isAuthenticated = useIsAuthenticated();
-  const { instance, accounts } = useMsal();
-
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
-
-  const runTest = async () => {
-    if (!isAuthenticated || accounts.length === 0) {
-      setResult("Please sign in before running the test.");
-      return;
-    }
-
-    setLoading(true);
-    setResult("");
-
-    try {
-      const account = accounts[0];
-      const accessToken = await getApiAccessToken(instance, account);
-
-      // 1. Import a sample security alert.
-      const alertResponse = await fetch(
-        "http://localhost:6001/api/Alert/upload",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            externalAlertId: "PATHGUARD-NORMALIZATION-TEST-001",
-            source: "PathGuard-Test",
-            eventType: "Brute Force",
-            title: "Multiple failed login attempts",
-            description:
-              '{"srcip":"192.168.1.25","dstip":"192.168.1.10","hostname":"test-workstation"}',
-            severity: "High",
-            timestamp: new Date().toISOString(),
-            status: "New",
-          }),
-        }
-      );
-
-      if (!alertResponse.ok) {
-        throw new Error(
-          `Alert import failed (${alertResponse.status}): ${await alertResponse.text()}`
-        );
-      }
-
-      const alert = await alertResponse.json();
-      const alertId = alert.alertId ?? alert.AlertId;
-
-      if (!alertId) {
-        throw new Error("Alert was returned without an alert ID.");
-      }
-
-      // 2. Normalize the imported alert.
-      const normalizeUrl =
-        `http://localhost:6001/api/Normalization/${alertId}`;
-
-      const firstResponse = await fetch(normalizeUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!firstResponse.ok) {
-        throw new Error(
-          `First normalization failed (${firstResponse.status}): ${await firstResponse.text()}`
-        );
-      }
-
-      const firstNormalized = await firstResponse.json();
-
-      // 3. Normalize it again to test whether the existing record is reused.
-      const secondResponse = await fetch(normalizeUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!secondResponse.ok) {
-        throw new Error(
-          `Second normalization failed (${secondResponse.status}): ${await secondResponse.text()}`
-        );
-      }
-
-      const secondNormalized = await secondResponse.json();
-
-      const firstId =
-        firstNormalized.normalizedAlertId ??
-        firstNormalized.NormalizedAlertId;
-
-      const secondId =
-        secondNormalized.normalizedAlertId ??
-        secondNormalized.NormalizedAlertId;
-
-      setResult(
-        JSON.stringify(
-          {
-            alertId,
-            alertImportStatus: alertResponse.status,
-            firstNormalized,
-            secondNormalized,
-            sameNormalizedRecord:
-              firstId != null &&
-              secondId != null &&
-              firstId === secondId,
-          },
-          null,
-          2
-        )
-      );
-    } catch (error) {
-      setResult(
-        error instanceof Error ? error.message : "An unexpected error occurred."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold">
-        PathGuard Normalization Test
-      </h1>
-
-      <p className="mb-4">
-        Imports a sample alert, normalizes it, and checks whether a second
-        request reuses the normalized record.
-      </p>
-
-      <button
-        onClick={runTest}
-        disabled={loading || !isAuthenticated}
-        className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-      >
-        {loading ? "Running test..." : "Test Alert Normalization"}
-      </button>
-
-      {result && (
-        <pre className="mt-6 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-4 text-sm text-gray-900">
-          {result}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-export default NormalizationTest;
-*/
-
 
 import { useState } from "react";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
@@ -171,6 +11,13 @@ function NormalizationTest() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+
+  // Store the latest normalized alert IDs for incident testing.
+  const [correlationAlertIds, setCorrelationAlertIds] = useState<{
+    A: number;
+    B: number;
+    C: number;
+  } | null>(null);
 
   const getHeaders = (accessToken: string) => ({
     Authorization: `Bearer ${accessToken}`,
@@ -246,6 +93,7 @@ function NormalizationTest() {
     };
   };
 
+  // TEST 1: Alert normalization and duplicate handling.
   const runTest = async () => {
     if (!isAuthenticated || accounts.length === 0) {
       setResult("Please sign in before running the test.");
@@ -308,9 +156,155 @@ function NormalizationTest() {
     }
   };
 
-  const runCorrelationTest = async () => {
+// TEST 2: Alert correlation.
+const runCorrelationTest = async () => {
+  if (!isAuthenticated || accounts.length === 0) {
+    setResult("Please sign in before running the test.");
+    return;
+  }
+
+  setLoading(true);
+  setResult("");
+  setCorrelationAlertIds(null);
+
+  try {
+    const accessToken = await getApiAccessToken(instance, accounts[0]);
+
+    const runId = Date.now();
+    const baseTime = Date.now();
+
+    // Generate a different synthetic source IP for every test run.
+    // This prevents older test runs from matching the current run.
+    const uniqueIP = (timestamp: number) => {
+      const part1 = Math.floor(timestamp / 65536) % 256;
+      const part2 = Math.floor(timestamp / 256) % 256;
+      return `10.200.${part1}.${part2}`;
+    };
+
+    const sharedSourceIP = uniqueIP(runId);
+    const isolatedSourceIP = `10.201.${Math.floor(runId / 65536) % 256}.${Math.floor(runId / 256) % 256}`;
+
+    const alertA = await importAndNormalize(
+      accessToken,
+      `PATHGUARD-CORRELATION-${runId}-A`,
+      sharedSourceIP,
+      new Date(baseTime).toISOString()
+    );
+
+    const alertB = await importAndNormalize(
+      accessToken,
+      `PATHGUARD-CORRELATION-${runId}-B`,
+      sharedSourceIP,
+      new Date(baseTime + 5 * 60 * 1000).toISOString()
+    );
+
+    const alertC = await importAndNormalize(
+      accessToken,
+      `PATHGUARD-CORRELATION-${runId}-C`,
+      isolatedSourceIP,
+      new Date(baseTime + 4 * 60 * 1000).toISOString()
+    );
+
+    const getCandidates = async (normalizedAlertId: number) => {
+      const response = await fetch(
+        `${API_URL}/Correlation/${normalizedAlertId}/candidates`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Correlation request failed (${response.status}): ${await response.text()}`
+        );
+      }
+
+      return response.json();
+    };
+
+    const [candidatesA, candidatesB, candidatesC] = await Promise.all([
+      getCandidates(alertA.normalizedAlertId),
+      getCandidates(alertB.normalizedAlertId),
+      getCandidates(alertC.normalizedAlertId),
+    ]);
+
+    const idsA = candidatesA.candidates.map(
+      (item: any) => item.normalizedAlertId ?? item.NormalizedAlertId
+    );
+
+    const idsB = candidatesB.candidates.map(
+      (item: any) => item.normalizedAlertId ?? item.NormalizedAlertId
+    );
+
+    const idsC = candidatesC.candidates.map(
+      (item: any) => item.normalizedAlertId ?? item.NormalizedAlertId
+    );
+
+    // Verify both correct matches and absence of unexpected matches.
+    const checks = {
+      A_finds_only_B:
+        idsA.length === 1 &&
+        idsA.includes(alertB.normalizedAlertId),
+
+      B_finds_only_A:
+        idsB.length === 1 &&
+        idsB.includes(alertA.normalizedAlertId),
+
+      C_has_no_candidates:
+        idsC.length === 0,
+    };
+
+    setCorrelationAlertIds({
+      A: alertA.normalizedAlertId,
+      B: alertB.normalizedAlertId,
+      C: alertC.normalizedAlertId,
+    });
+
+    setResult(
+      JSON.stringify(
+        {
+          test: "Alert correlation",
+          alerts: {
+            A: alertA,
+            B: alertB,
+            C: alertC,
+          },
+          candidateResults: {
+            A: candidatesA,
+            B: candidatesB,
+            C: candidatesC,
+          },
+          checks,
+          allChecksPassed: Object.values(checks).every(Boolean),
+        },
+        null,
+        2
+      )
+    );
+  } catch (error) {
+    setResult(
+      error instanceof Error ? error.message : "An unexpected error occurred."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  // TEST 3: Incident creation and alert association.
+  const runIncidentTest = async () => {
     if (!isAuthenticated || accounts.length === 0) {
       setResult("Please sign in before running the test.");
+      return;
+    }
+
+    if (!correlationAlertIds) {
+      setResult(
+        "Please run the Alert Correlation test first. Incident testing requires its latest alert IDs."
+      );
       return;
     }
 
@@ -320,39 +314,11 @@ function NormalizationTest() {
     try {
       const accessToken = await getApiAccessToken(instance, accounts[0]);
 
-      // Use a unique ID for every test run to avoid duplicate imports.
-      const runId = Date.now();
-      const baseTime = Date.now();
-
-      // Alert A: same source IP as B.
-      const alertA = await importAndNormalize(
-        accessToken,
-        `PATHGUARD-CORRELATION-${runId}-A`,
-        "192.168.1.25",
-        new Date(baseTime).toISOString()
-      );
-
-      // Alert B: same source IP and event, five minutes after A.
-      const alertB = await importAndNormalize(
-        accessToken,
-        `PATHGUARD-CORRELATION-${runId}-B`,
-        "192.168.1.25",
-        new Date(baseTime + 5 * 60 * 1000).toISOString()
-      );
-
-      // Alert C: different source IP, four minutes after A.
-      const alertC = await importAndNormalize(
-        accessToken,
-        `PATHGUARD-CORRELATION-${runId}-C`,
-        "192.168.1.90",
-        new Date(baseTime + 4 * 60 * 1000).toISOString()
-      );
-
-      const getCandidates = async (normalizedAlertId: number) => {
+      const createIncident = async (normalizedAlertId: number) => {
         const response = await fetch(
-          `${API_URL}/Correlation/${normalizedAlertId}/candidates`,
+          `${API_URL}/Incident/create/${normalizedAlertId}`,
           {
-            method: "GET",
+            method: "POST",
             headers: {
               Authorization: `Bearer ${accessToken}`,
             },
@@ -361,56 +327,54 @@ function NormalizationTest() {
 
         if (!response.ok) {
           throw new Error(
-            `Correlation request failed (${response.status}): ${await response.text()}`
+            `Incident creation failed (${response.status}): ${await response.text()}`
           );
         }
 
         return response.json();
       };
 
-      const [candidatesA, candidatesB, candidatesC] = await Promise.all([
-        getCandidates(alertA.normalizedAlertId),
-        getCandidates(alertB.normalizedAlertId),
-        getCandidates(alertC.normalizedAlertId),
-      ]);
+      // Create or reuse incidents for the latest correlation test alerts.
+      const incidentA = await createIncident(correlationAlertIds.A);
+      const incidentB = await createIncident(correlationAlertIds.B);
+      const incidentC = await createIncident(correlationAlertIds.C);
 
-      const idsA = candidatesA.candidates.map(
-        (item: any) => item.normalizedAlertId ?? item.NormalizedAlertId
-      );
+      const getIncidentId = (response: any) =>
+        response.incident?.incidentId ??
+        response.incident?.IncidentId ??
+        null;
 
-      const idsB = candidatesB.candidates.map(
-        (item: any) => item.normalizedAlertId ?? item.NormalizedAlertId
-      );
+      const incidentAId = getIncidentId(incidentA);
+      const incidentBId = getIncidentId(incidentB);
+      const incidentCId = getIncidentId(incidentC);
 
-      const idsC = candidatesC.candidates.map(
-        (item: any) => item.normalizedAlertId ?? item.NormalizedAlertId
-      );
+      const checks = {
+        A_and_B_share_incident:
+          incidentAId !== null && incidentAId === incidentBId,
 
-      const results = {
-        test: "Alert correlation",
-        alerts: {
-          A: alertA,
-          B: alertB,
-          C: alertC,
-        },
-        candidateResults: {
-          A: candidatesA,
-          B: candidatesB,
-          C: candidatesC,
-        },
-        checks: {
-          A_finds_B: idsA.includes(alertB.normalizedAlertId),
-          B_finds_A: idsB.includes(alertA.normalizedAlertId),
-          C_does_not_find_A_or_B:
-            !idsC.includes(alertA.normalizedAlertId) &&
-            !idsC.includes(alertB.normalizedAlertId),
-        },
+        C_remains_unassigned:
+          incidentCId === null,
       };
 
-      setResult(JSON.stringify(results, null, 2));
+      setResult(
+        JSON.stringify(
+          {
+            test: "Incident creation and association",
+            normalizedAlertIds: correlationAlertIds,
+            results: {
+              alertA: incidentA,
+              alertB: incidentB,
+              alertC: incidentC,
+            },
+            checks,
+          },
+          null,
+          2
+        )
+      );
     } catch (error) {
       setResult(
-        error instanceof Error ? error.message : "An unexpected error occurred."
+        error instanceof Error ? error.message : "Unexpected error occurred."
       );
     } finally {
       setLoading(false);
@@ -424,8 +388,8 @@ function NormalizationTest() {
       </h1>
 
       <p className="mb-4">
-        Test alert normalization, duplicate handling, and correlation using
-        authenticated API requests.
+        Test alert normalization, duplicate handling, correlation, and incident
+        creation using authenticated API requests.
       </p>
 
       <div className="flex flex-wrap gap-3">
@@ -443,6 +407,14 @@ function NormalizationTest() {
           className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
         >
           Test Alert Correlation
+        </button>
+
+        <button
+          onClick={runIncidentTest}
+          disabled={loading || !isAuthenticated}
+          className="rounded bg-green-600 px-4 py-2 text-white disabled:opacity-50"
+        >
+          Test Incident Creation
         </button>
       </div>
 
